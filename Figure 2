@@ -1,0 +1,94 @@
+#find samples in each arm - example A
+UC_cross_A <- subset_samples(UC.f_enrol, VISIT=="Screening" | VISIT=="Crossover" & Study.arm =="A")
+#find matched samples
+UC_V1 <- subset_samples(UC_cross_A, VISIT=="Screening")
+UC_df_V1 <- data.frame(sample_names(UC_V1),sample_data(UC_V1)$PID, sample_data(UC_V1)$Shannon)
+names(UC_df_V1) <- c("SampleID","PID","Shannon_V1")
+UC_V2 <- subset_samples(UC_cross_A, VISIT=="Crossover")
+UC_df_V2 <- data.frame(sample_names(UC_V2),sample_data(UC_V2)$PID, sample_data(UC_V2)$Shannon)
+names(UC_df_V2) <- c("SampleID","PID","Shannon_V2")
+UC_V3 <- subset_samples(UC_cross_A, VISIT=="Exit")
+UC_df_V3 <- data.frame(sample_names(UC_V3),sample_data(UC_V3)$PID, sample_data(UC_V3)$Shannon)
+names(UC_df_V3) <- c("SampleID","PID","Shannon_V3")
+UC_all <- merge(UC_df_V1, UC_df_V2, by="PID")
+#
+Arm_A <- subset_samples(UC.f_enrol, PID %in% UC_all$PID & VISIT !="Exit")
+
+#------------------------------------------------------------
+#A-C. Alluvial plots - baseline to crossover (intention to treat)
+#------------------------------------------------------------
+UC_clusters <- data.frame(Screening=c(rep("CST-IV",3), rep("CST-I", 3),rep("CST-III",3)),
+                          Crossover=c(rep(c("CST-IV", "CST-I", "CST-III"),3)),
+                          Freq=c(7,1,6,2,4,2,2,2,7)) 
+UC2d <- aggregate(Freq ~ Screening+Crossover, data=UC_clusters, sum)
+UC_alluvial <- alluvial(UC2d[,1:2], freq=UC2d$Freq, xw=0.1, alpha=1.0,
+                        gap.width=0.1, col= c("#F8BE8B","#E3EA9C","#666666"), border="white", blocks = "TRUE")
+
+#------------------------------------------------------------
+#D-F. intention to treat (ITT) boxplots - longitudinal
+#------------------------------------------------------------
+#boxplot - longitudinal
+CKs = sample_data(Arm_A)[,c(192,202)]
+head(CKs)
+
+adj.p.t.test <- compare_means(Shannon ~ VISIT, Arm_A, method = "wilcox.test", paired = TRUE,
+                              ref.group = NULL,
+                              p.adjust.method = "BH")
+                          
+paletteVisit <- c("Baseline"="dimgrey","Crossover"="coral3")
+pplot <- ggpaired(Arm_A, x="VISIT", y = "Shannon",
+                  color = "VISIT",palette = paletteVisit, 
+                  line.color = "gray", line.size = 0.4,add = "jitter",
+                  short.panel.labs = TRUE) +
+  scale_y_log10() +
+  theme(axis.text.x=element_text(angle = 45, hjust = 1,size=14,face="bold")) + 
+  theme(text=element_text(size=16)) + ylab("Shannon Index")
+pplot
+
+#------------------------------------------------------------
+#G. Intention to treat (ITT) plots - cross-sectional
+#------------------------------------------------------------
+UC.f_cross <- subset_samples(UC.f_enrol, VISIT=="Crossover")
+
+#boxplot - cross-sectional 
+boxplot_alpha_V2_itt <- function(physeq) {  
+  rich_S <-plot_richness(physeq, x ="HC.assigned", measures=c("Shannon"))$data  
+  #boxplot 
+  paletteHC <- c("NET-EN"="coral3","COC"="dodgerblue3","NuvaRing"="seagreen")
+  pplot <- ggplot(data=rich_S, aes(factor(HC.actual), y = value, fill=HC.assigned)) + geom_boxplot() + geom_point(aes(color=HC.assigned))+ stat_smooth(method="loess")+ theme_bw() + scale_fill_manual(values=c(paletteHC)) + scale_color_manual(values=c(paletteHC))+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+theme(axis.text.x=element_text(angle = 45, hjust = 1,size=12,face="bold")) + theme(text=element_text(size=14)) +ylab("Shannon Index") +scale_y_log10() + ggtitle("Alpha Diversity by study arm")
+  pplot <- pplot + geom_signif(comparisons = list(c("COC","NET-EN")), map_signif_level=TRUE, annotations="***",y_position = c(0.8),tip_length = 0.02, textsize = 4)
+  pplot <- pplot + geom_signif(comparisons = list(c("COC","NuvaRing")), map_signif_level=TRUE, annotations="***",y_position = c(1.0),tip_length = 0.02, textsize = 4)
+  fun_length <- function(x){
+    return(data.frame(y=median(x),label= paste0("n=", length(x))))
+  }
+  pplot2 <- pplot + stat_summary(aes(x = factor(HC.assigned)), fun.data = fun_length, geom = "text",vjust = 2.2, size = 4)
+  #create figure 
+  return(pplot2)
+}
+UC_boxplot_alpha_V2_itt <- boxplot_alpha_V2_itt(physeq=UC.f_cross) 
+UC_boxplot_alpha_V2_itt
+
+#------------------------------------------------------------
+#H. Beta diversity plot - cross-sectional
+#------------------------------------------------------------
+levels(sample_data(UC.f_cross)$Study.arm) <- c("A"="NET-EN","B"="NuvaRing","C"="COC")
+sample_data(UC.f_cross)$Study.arm <-factor(sample_data(UC.f_cross)$Study.arm, levels= c("COC","NET-EN","NuvaRing")) 
+Crossover_dg <- data.frame(row.names=sample_names(Crossover),sample_data(Crossover))
+Crossover_dg[Crossover_dg == ""] <- NA
+#
+diss.UC_cross_itt <- phyloseq::distance(Crossover,method = "wunifrac", type = "samples") 
+#
+model<-betadisper(diss.UC_cross_itt, sample_data(Crossover)$Study.arm,bias.adjust = FALSE, sqrt.dist = FALSE, add = FALSE)
+plot(model, hull=FALSE, ellipse=TRUE, col=c("COC"="dodgerblue3","NET-EN"="coral3","NuvaRing"="seagreen"), label=FALSE,segments=FALSE,cex = 1.1)
+
+#ordination plot
+cluster_V2_itt <- function(physeq, method, distance, color) {
+  #ordinate samples using distance measure of interest, and eg PCoA/NMDS
+  ord_wuni <-ordinate(physeq,method=method,distance=distance)
+  paletteHC <- c("A"="coral3","C"="dodgerblue3","B"="seagreen")
+  #plot ordination, PCoA, color variable1, shape variable2
+  PCoA_wuni <- plot_ordination(physeq, ord_wuni, color=color) + theme_bw() +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(values=paletteHC) + geom_point(size=2.5) + theme(text=element_text(size=12)) + ggtitle("PCoA of study arm - ITT")
+  return(PCoA_wuni) 
+} 
+UC_cluster_V2_itt <- cluster_V2_itt(UC.f_cross,method="PCoA", distance="wunifrac", color="Study.arm") 
+UC_cluster_V2_itt
