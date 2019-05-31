@@ -54,4 +54,37 @@ barplot_stag_UC_sort <- function(physeq,var) {
 }
 barplot_stag_UC(UC.f_enrol,var=VISIT)
 
+#-----------------------------------------------------------------------------------------------------------------------
+#ALPHA & BETA DIVERSITY BY COMMUNITY CLUSTERS 
+#-----------------------------------------------------------------------------------------------------------------------
+
+#BOXPLOT
+boxplot_alpha_cluster <- function(physeq, measure) {
+  rich_S <-plot_richness(physeq, x ="fuzzycluster", measures=c(measure))$data 
+  paletteFC<-c("CST-I"="#E9BA9E","CST-III"="#FEE992","CST-IV"="#666666")
+  pplot <- ggplot(data=rich_S, aes(factor(fuzzycluster), y = value, fill=fuzzycluster)) + geom_boxplot() + geom_point(aes(color=fuzzycluster))+ stat_smooth(method="loess")+ theme_bw() + scale_fill_manual(values=c(paletteFC)) + scale_color_manual(values=c(paletteFC))  +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+theme(axis.text.x=element_text(angle = 45, hjust = 1,size=16,face="bold")) + theme(text=element_text(size=18)) + scale_y_log10() +ylab("Shannon Index") 
+  pplot <- pplot + geom_signif(comparisons = list(c("CST-I", "CST-IV")), map_signif_level=TRUE, annotations="***",y_position = c(2.2),tip_length = 0.02, textsize = 6,vjust=0.5)
+  pplot <- pplot + geom_signif(comparisons = list(c("CST-III", "CST-IV")), map_signif_level=TRUE, annotations="***",y_position = c(1.8),tip_length = 0.02, textsize = 6,vjust=0.5)
+  fun_length <- function(x){
+ return(data.frame(y=median(x),label= paste0("n=", length(x))))
+  }
+  pplot2 <- pplot + stat_summary(aes(x = factor(fuzzycluster)), fun.data = fun_length, geom = "text",vjust = 1.5, size = 4)
+  #create figure 
+  return(pplot)
+}
+UC_alpha_clust_bp <- boxplot_alpha_cluster(physeq=UC.f_enrol, measure="Shannon") 
+UC_alpha_clust_bp 
+
+#ORDINATION PLOT
+ordination_beta_cluster <- function(pobject, method, distance, color, shape) {
+  #ordinate samples using distance measure of interest, and eg PCoA/NMDS
+  ord_wuni <-ordinate(pobject,method=method,distance=distance)
+  paletteFC <-c("CST-I"="#E9BA9E","CST-III"="#FEE992","CST-IV"="#666666")
+  #plot ordination, PCoA, color variable1, shape variable2
+  PCoA_wuni <- plot_ordination(pobject, ord_wuni, color = color, shape = shape) + theme_bw() +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(values=paletteFC) + geom_point(size=4) + theme(text=element_text(size=18)) + ggtitle("PCoA of community clusters")
+  return(PCoA_wuni) 
+} 
+UC_beta_clust_ord <- ordination_beta_cluster(UC.f_enrol,method="PCoA", distance="wunifrac", color="fuzzycluster", shape="BV")
+UC_beta_clust_ord
+
 
