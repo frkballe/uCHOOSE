@@ -1,0 +1,57 @@
+#-----------------------------------------------------------------------------------------------------------------------
+#BARPLOT - ORDERED AND CLUSTERED
+#-----------------------------------------------------------------------------------------------------------------------
+
+barplot_stag_UC_sort <- function(physeq) {
+  p1 <- tax_glom(physeq, taxrank = 'Species') #agglumerate at species level
+  p1_30 = prune_taxa(names(sort(taxa_sums(p1), TRUE))[1:30], p1) #use top 30 most abundant taxa for plotting
+  p2 <- transform_sample_counts(p1_30, function(x) x/sum(x)) #get abundance in %
+  p3 <- psmelt(p2)  #create dataframe from phyloseq object
+  p3$Species <- as.character(p3$Species) #convert to character
+  #sort based on abundance of dominant bacteria in each cluster
+  p4 <- p3[,c("Sample", "Species","fuzzycluster", "Abundance")]
+  p4 <- dcast(p3, Sample + fuzzycluster ~ Species, value.var = "Abundance", fun.aggregate = sum)
+  p4[p4$fuzzycluster =="CST-I",] <- p4[p4$fuzzycluster=="CST-I",][order(p4[p4$fuzzycluster=="CST-I","crispatus_acidophilus"]),]
+  p4[p4$fuzzycluster =="CST-III",] <- p4[p4$fuzzycluster=="CST-III",][order(p4[p4$fuzzycluster=="CST-III","iners"]),]
+  p4[p4$fuzzycluster =="CST-IV",] <- p4[p4$fuzzycluster=="CST-IV",][order(p4[p4$fuzzycluster=="CST-IV","vaginalis"]),]
+  #reorder p3
+  p3$Sample <- factor(p3$Sample, levels=c(p4$Sample))
+  otus <- otu_table(p1_30)
+  #annotation 
+  labs <- tax.lab(physeq,otus=otus)
+  #set color palette to accommodate the number of species
+  colourCount = length(unique(p3$Species))
+  getPalette = colorRampPalette(brewer.pal(8, "Accent")) 
+  #annotation 
+  #plot
+  barplot_species <- ggplot(data=p3, aes(x=Sample, y=Abundance, fill=Species)) 
+  barplot_species <- barplot_species + geom_bar(aes(), stat="identity", position="stack") + facet_grid(~fuzzycluster, scales = "free", space="free") + guides(fill=guide_legend(nrow=5)) + scale_fill_manual(values=getPalette(colourCount)) + ylab("Relative abundance") +xlab("Participants") + ggtitle("Bacterial composition by fuzzy clusters") + theme(legend.position="bottom", strip.background = element_rect(fill=NA, color = "orange"), axis.text.x = element_blank(), axis.ticks.x = element_blank(),panel.background=element_blank(),panel.border=element_blank())
+  return(barplot_species)
+}
+UC_barplot_stag(UC.f_enrol)
+UC_barplot_stag
+
+#shannon diversity plot for barplot
+barplot_stag_UC_sort <- function(physeq,var) {
+  physeq_rich_value <- plot_richness(physeq, x ="var", measures=c("Shannon"))$data$value
+  sample_data(physeq)$shannon <- c(physeq_rich_value) 
+  p1 <- tax_glom(physeq, taxrank = 'Species') #agglumerate at species level
+  p1_30 = prune_taxa(names(sort(taxa_sums(p1), TRUE))[1:30], p1) #use top 30 most abundant taxa for plotting
+  p2 <- transform_sample_counts(p1_30, function(x) x/sum(x)) #get abundance in %
+  p3 <- psmelt(p2)  #create dataframe from phyloseq object
+  p3$Species <- as.character(p3$Species) #convert to character
+  #sort based on abundance of dominant bacteria in each cluster
+  p4 <- p3[,c("Sample", "Species","fuzzycluster", "Abundance")]
+  p4 <- dcast(p3, Sample + fuzzycluster ~ Species, value.var = "Abundance", fun.aggregate = sum)
+  p4[p4$fuzzycluster =="CST-I",] <- p4[p4$fuzzycluster=="CST-I",][order(p4[p4$fuzzycluster=="CST-I","crispatus_acidophilus"]),]
+  p4[p4$fuzzycluster =="CST-III",] <- p4[p4$fuzzycluster=="CST-III",][order(p4[p4$fuzzycluster=="CST-III","iners"]),]
+  p4[p4$fuzzycluster =="CST-IV",] <- p4[p4$fuzzycluster=="CST-IV",][order(p4[p4$fuzzycluster=="CST-IV","vaginalis"]),]
+  #reorder p3
+  p3$Sample <- factor(p3$Sample, levels=c(p4$Sample))
+  #plot shannon index
+  shannon_plot <- ggplot(p3, aes(x=Sample, y=shannon)) + geom_bar(aes(), stat="identity", width = 0.4) + theme_bw() + facet_grid(~fuzzycluster, scales = "free", space="free") + ylab("Shannon Index") +xlab("Participants") + ggtitle("Shannon diversity by fuzzy clusters") + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position="bottom", strip.background = element_rect(fill=NA, color = "orange"), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+  return(shannon_plot)
+}
+barplot_stag_UC(UC.f_enrol,var=VISIT)
+
+
