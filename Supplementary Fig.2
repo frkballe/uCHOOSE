@@ -1,1 +1,24 @@
 
+#------------------------------------------------------------------------------------
+#A. CORRELATION PLOT OF BACTERIA AND CYTOKINES
+#------------------------------------------------------------------------------------
+#physeq_cyt - phyloseq object including samples with cytokine data
+merged = tax_glom.kv(physeq_cyt)
+m.otus = otu_table(merged)
+dim(m.otus)#341 335
+CKs = sample_data(merged)[,c(177,179,181:191)] #include cytokine data
+#now we first need to remove samples with any NAs
+which(is.na(CKs))
+CKs <- CKs[rowSums(is.na(CKs)) == 0,]
+#now we also need to remove that sample from m.otus
+m.otus = m.otus[,rownames(CKs)]
+#set rownames to lowest available annotation:
+row.names(m.otus) <- tax.lab(m.otus,physeq=merged)
+#tax.lab function is from microbiome_custom_scripts.R #https://gist.github.com/kviljoen/97d36c689c5c9b9c39939c7a100720b9
+head(m.otus)
+outDir = "/Users/christinaballe/Desktop/Christina/uCHOOSE_microbiota"
+corr.k(mat1 = CKs, mat2 = t(m.otus),outDir, filename = "merged_taxa_vs_all_cytokines") #corr.k function is from microbiome_custom_scripts.R
+
+#------------------------------------------------------------------------------------
+#B. CROSS-SECTIONAL INTENTION TO TREAT (ITT) ANALYSIS OF CYTOKINE CONCENTRATIONS
+#------------------------------------------------------------------------------------
