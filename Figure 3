@@ -1,3 +1,7 @@
+#-----------------------------------------------------------------------------------------------------------------------
+#A-C. INTENTION TO TREAT (ITT) ANALYSIS - CYTOKINE LEVELS WITHIN EACH ARM FROM BASELINE TO CROSSOVER VISIT
+#-----------------------------------------------------------------------------------------------------------------------
+#Arm_A
 CKs = Arm_A[c(1,2,181,183,185:195)]
 CKs$PID <- factor(CKs$PID)
 CKs$VISIT <- factor(CKs$VISIT)
@@ -30,3 +34,5 @@ pplot +
   geom_signif(data=annotation_df,
               aes(xmin=start, xmax=end, annotations=label, y_position=y),
               textsize = 3,vjust=0.3,tip_length=0.01, manual=TRUE)
+
+#REPEAT FOR ARM B AND ARM C
