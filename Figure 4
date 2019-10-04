@@ -1,0 +1,47 @@
+#-----------------------------------------------------------
+#sPLSDA PLOT - LONGITUDINAL ANALYSIS 
+#-----------------------------------------------------------
+meta <-  read.csv("before_after_clrbact_logcyt.csv", sep = ";", header =TRUE, row.names=1) #to import the date from excel
+colnames(meta)
+sample = meta$PID
+X<-meta[,c(8:ncol(meta))]#assign the x variables #log transformed cytokine levels and clr transformed bacterial read counts
+str(X)
+Y<- meta$HC_group #assign the y variable #split into contraceptive method (COC, Net-En, CCVR) and visit (baseline, crossover)
+plsda.HC_Method <- plsda(X, Y, ncomp = 2, multilevel = sample) #discriminate between the y variable groups according to the x variables
+palette=c("CCVR_baseline"="mediumseagreen","CCVR_crossover"="seagreen4","COC_baseline"="dodgerblue","COC_baseline"="dodgerblue4","Net-En_baseline"="coral1","Net-En_crossover"="coral3")
+plotIndiv(plsda.HC_Method, ind.names = FALSE, main="HC_Method", ellipse = TRUE, centroid = TRUE, cex = 2, point.lwd = 0.7, size.axis=16, size.xlabel=16, size.ylabel=16, legend = TRUE,size.legend=16,size.legend.title =16, col.per.group=palette, title = 'HC baseline & crossover, PLSDA') #plot to PLSDA output
+
+#To calculate the % correctly classified and to cross-validate
+plsda.HC_Method.perf <- plsda(X, Y, ncomp = 10) 
+perf.plsda <- perf(plsda.HC_Method.perf, validation = 'Mfold', folds = 10, progressBar = FALSE, nrepeat = 50) #10-fold is better, 50-100 repeats is better
+head(perf.plsda$error.rate) #display error rate
+
+#sPLSDA - to reduce the number of variables to the optimal number that best separates your groups
+list.keepX <- c(1:ncol(X))
+tune.splsda.HC_Method <- tune.splsda(X, Y, ncomp = 5, validation = 'Mfold', folds = 5, progressBar = FALSE, dist = 'mahalanobis.dist', test.keepX = list.keepX, nrepeat = 50) 
+#To obtain a more reliable estimation of the error rate, the number of repeats should be increased (between 50 to 100)
+head(tune.splsda.HC_Method$error.rate) #display the mean classification error rate on each component
+tune.splsda.HC_Method$choice.keepX #shows optimal number of variables per component
+plot(tune.splsda.HC_Method, optimal = TRUE, sd = TRUE) 
+#plot shows the optimal number of variables to select as well as the number of components ncomp. 
+#The diamond on the plot indicates the best keepX value to achieve the lowest error rate per component.
+choice.ncomp <- tune.splsda.HC_Method$choice.ncomp$ncomp
+#choice.ncomp <- 2
+choice.keepX <- tune.splsda.HC_Method$choice.keepX[1:choice.ncomp]
+#how many variables to keep per component
+splsda.HC_Method <- splsda(X, Y, ncomp = choice.ncomp, keepX = choice.keepX, multilevel = sample) #redoing the classifcation using only the optimal variables
+#multilevel = subjID
+plotIndiv(splsda.HC_Method, comp = c(1,2), group = meta$HC_group, ind.names = FALSE,ellipse = TRUE, centroid = TRUE, cex = 2, point.lwd = 0.7, size.axis=16, size.xlabel=16, size.ylabel=16, legend = TRUE,size.legend=16,size.legend.title =16,col.per.group=palette,title = 'HC baseline & crossover, sPLSDA')
+
+#check error of sPLSDA:
+set.seed(40) # for reproducibility, only when the `cpus' argument is not used
+perf.splsda <- perf(splsda.HC_Method, folds = 10, validation = "Mfold", dist = "max.dist", progressBar = FALSE, nrepeat = 50)
+perf.splsda$error.rate
+perf.splsda$error.rate.class
+plot(perf.splsda, overlay = 'measure', sd = TRUE)
+
+plotLoadings(splsda.HC_Method, comp = 1, title = 'Component 1', 
+             contrib = 'min', method = 'mean',legend.color =palette)
+plotLoadings(splsda.HC_Method, comp = 2, title = 'Component 2', 
+             contrib = 'min', method = 'mean', legend.color =palette)
+
