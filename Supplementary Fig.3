@@ -1,1 +1,142 @@
 
+#----------------------------------------------------------------------------------
+#A-C. CLUSTERING OF CYTOKINE DATA - IDENTIFYING INFLAMMATION GROUPS
+#----------------------------------------------------------------------------------
+physeq_cyt <- subset_samples(UC.f_enrol, IL.1b != "NA") #include samples with cytokine data
+CKs = sample_data(physeq_cyt)
+Cks = data.frame(CKs)
+plot = CKs[,c(181,183,185:195)]
+head(plot)
+plot[,c(1:2)] <- log2(plot[,c(1:2)])
+head(plot)
+plot <- t(plot)
+dim(plot)#13 cytokines, N=338 cases
+rownames(plot)
+#metadata:
+t = CKs
+#PAM CLUSTERING, test k=2:5
+diss = dist(t(plot), method = "euclidian")
+Avg.sil <- rep (NA, 5)
+for (i in 2:5)
+  Avg.sil[i] <- pam(diss, k=i)$silinfo$avg.width
+Avg.sil#average silhouette width
+# NA 0.3356805 0.2639995 0.2371655 0.1973733
+k.best <- which.max(Avg.sil)
+cat("silhouette-optimal number of clusters:", k.best, "\n")
+plot(1:5, Avg.sil, type= "h", main = "Euclidean distances",
+     xlab= "k  (# clusters)", ylab = "average silhouette width")
+axis(1, k.best, paste("best",k.best,sep="\n"), col = "red", col.axis = "red")
+#----------------------------------------
+# k=2 maximises average silhouette width 
+#----------------------------------------
+pam = pam(diss, k=2)#euc. diss. matrix with k=2
+str(pam)
+membership = pam$clustering
+#PLOT PAM CLUSTERS
+filename = "log2cytokines_all_samples_PAM_clusters_k2"
+outDir = "/Users/christinaballe/Desktop/Christina/vaginal_microbiota"
+f = paste0(outDir,filename,".pdf")
+main <- c("PAM-based clustering, k=2")
+pdf(f)
+clusplot(pam, main = main)
+dev.off()
+#
+CKs$Cyt_clust <- pam$clustering
+CKs$Cyt_clust <- as.character(CKs$Cyt_clust)
+CKs$Cyt_clust[CKs$Cyt_clust == "1"] <- "High"
+CKs$Cyt_clust[CKs$Cyt_clust == "2"] <- "Low"
+t = CKs
+#----------------------------------------------------------------------------------
+#C. HEATMAP OF ALL CYTOKINES WITH DEMOGRAPHIC/CLINICAL PARAMETERS FOR FULL DATASET 
+#----------------------------------------------------------------------------------
+#clean up cytokine labels:
+rownames(plot) <- sub("\\.","-",rownames(plot))
+#select annotation features:
+t.track = t[,c("BV","fuzzycluster","Cyt_clust")]
+colnames(t.track) = c("BV","fuzzycluster","Cyt_cluster")#Clean up names for plot
+str(t.track)
+#Clean up labels:
+t.track$BV = as.factor(t.track$BV)
+t.track$fuzzycluster <- as.factor(t.track$fuzzycluster)
+t.track$Cyt_cluster<- as.factor(t.track$Cyt_cluster)
+#t.track$C.trachomatis<- as.factor(t.track$C.trachomatis)
+#COLOURS FOR HEATMAP FEATURE ANNOTATION:
+#for BV+
+BV.cols =c("Neg" ="maroon1","Int"="deepskyblue","Pos"="yellow")
+fuzzy.cols = c("CST-IV"="#666666","CST-I"="#E9BA9E","CST-III"="#FEE992")
+ct.cols = c("No"="green","Yes"="orange")
+cyt.cols <- c("High"="red","Low"="blue")
+colors <- list("Cyt_cluster"=cyt.cols,"BV"=BV.cols,"fuzzycluster"=fuzzy.cols)
+#manually order by PAM inflammatory class for heatmap display
+t.track <- t.track[order(t.track$Cyt_cluster),]
+plot.sub = plot[,rownames(t.track)]
+#PLOT HEATMAP:
+outDir = "/Users/christinaballe/Desktop/Christina/Test_seq_runs"
+filename = "log2cytokines_all_samples_heatmap"
+f = paste0(outDir,filename,".pdf")
+main <- c("PAM-classified, k=2")
+pdf(f)
+a <- aheatmap(plot.sub, main = main,
+              annCol = t.track, annColors = colors, Colv = NA, cexRow=0.3
+)
+dev.off()
+#--------------------------------------
+#A. PCA PLOT COLORED BY INFL GROUP
+#--------------------------------------
+sum(is.na(plot)) #6
+sum(is.infinite(plot))
+plot_test <- na.omit(plot)
+sum(is.na(plot_test))
+pca <- rda(t(plot_test))#library(vegan)
+pca
+scor = scores(pca, scaling=1) #get species biplot, scaling=1 scales by sites (samples) as opposed to scores (species)
+sample.scores <- as.data.frame(scores(pca)$sites)
+sample.scores
+sample.scores$pam.class <- membership
+sample.scores$pam.class <- as.character(sample.scores$pam.class)
+sample.scores$pam.class[sample.scores$pam.class == "1"] <- "High"
+sample.scores$pam.class[sample.scores$pam.class == "2"] <- "Low"
+#
+pdf(paste0(outDir,"og2cytokines_k2_pam_classes_euclidian.pdf"))#
+title = c("PCA of cytokines, k=2 pam clusters")
+colour = sample.scores$pam.class
+c.lab = "PAM class"
+ggplot() + 
+  geom_point(data=sample.scores,aes(x=PC1,y=PC2,colour=colour),size=4) + # add the point markers
+  #NB - EDIT TITLE AS NEEDED
+  ggtitle("Cytokine clusters uCHOOSE-A-Star")+
+  coord_equal() +
+  theme_bw() + 
+  labs(color=c.lab) +
+  scale_color_manual(values=c("red","blue"))
+theme(axis.text.x = element_blank(),  # remove x-axis text
+      axis.text.y = element_blank(), # remove y-axis text
+      axis.ticks = element_blank(),  # remove axis ticks
+      axis.title.x = element_text(size=36), # remove x-axis labels
+      axis.title.y = element_text(size=36), # remove y-axis labels
+      panel.background = element_blank(), 
+      panel.grid.major = element_blank(),  #remove major-grid labels
+      panel.grid.minor = element_blank(),  #remove minor-grid labels
+      plot.background = element_blank())
+dev.off()
+
+#----------------------------------------------------------------------------------
+#B. BOXPLOT OF SHANNON DIVERSITY BY INFL GROUPS 
+#----------------------------------------------------------------------------------
+boxplot_inflam <- function(physeq, measure) {
+  paletteIF <- c("High"="red", "Low"="blue")
+  rich_S <-plot_richness(physeq, x ="VISIT", measures=c(measure))$data 
+  pplot <- ggplot(data=rich_S, aes(factor(Cyt_cluster), y = value, fill=Cyt_cluster)) + geom_boxplot() + geom_point(aes(color=Cyt_cluster))+ stat_smooth(method="loess")+ theme_bw() + scale_fill_manual(values=c(paletteIF)) + scale_color_manual(values=c(paletteIF))  +theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+theme(axis.text.x=element_text(angle = 45, hjust = 1,size=10,face="bold")) + theme(text=element_text(size=10)) +ylab("Shannon Index (log)") + ggtitle("Alpha diversity by inflammation") +scale_y_log10()
+  pplot <- pplot + geom_signif(comparisons = list(c("Low", "High")), map_signif_level=TRUE, annotations="***",y_position = c(1.7),tip_length = 0.02, textsize = 4,vjust=0.1)
+  fun_length <- function(x){
+    return(data.frame(y=median(x),label= paste0("n=", length(x))))
+  }
+  pplot2 <- pplot + stat_summary(aes(x = factor(Cyt_cluster)), fun.data = fun_length, geom = "text",vjust = 1.5, size = 3)
+  #create figure 
+  return(pplot2)
+}
+UC_boxplot_inflam <- boxplot_inflam(physeq=UC.f_enrol, measure="Shannon") 
+UC_boxplot_inflam
+
+
+
