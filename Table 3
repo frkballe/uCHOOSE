@@ -1,1 +1,53 @@
 #Table 3
+source("https://bioconductor.org/biocLite.R")
+biocLite("DESeq2")
+library(DESeq2)
+
+#####################################################################
+#TABLE 3A - DESeq2 analysis - crossover ITT with confounders
+#####################################################################
+#subset samples to include samples from two study arms at the time
+COC_CCVR <- subset_samples(UC.f_enrol, VISIT=="Crossover" & Study.arm != "COC" & srb_CondomUsed_PV !="NA" & Antibiotic.any !="NA"  & Shannon_screening !="NA")
+glom <- tax_glom.kv(COC_CCVR) #
+physeq <- glom
+#run Deseq2 and include covariates
+diff.da = phyloseq_to_deseq2(physeq, ~ Antibiotic.any+Shannon_screening+srb_CondomUsed_PV+Study.arm)
+obs.gm.mean = function(x, na.rm=TRUE) {
+  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+}
+diff.geomeans = apply(counts(diff.da), 1, obs.gm.mean)
+diff.da = estimateSizeFactors(diff.da, geoMeans = diff.geomeans)
+diff.da = DESeq(diff.da, fitType = "local")
+diff.res = results(diff.da, contrast = c("Study.arm","Net-En","CCVR"))
+diff.res = diff.res[order(diff.res$padj, na.last = NA), ]
+alpha = 0.05#this is your significance level, adjust if desired
+sigtab = diff.res[(diff.res$padj < alpha), ]
+sigtab = cbind(as(sigtab, "data.frame"), as(tax_table(physeq)[rownames(sigtab), ], "matrix"))
+head(sigtab)
+setwd("/Users/christinaballe/Desktop")
+write.csv(sigtab, "NetENvCCVR_wconfounders_a0.05.csv")
+
+
+#####################################################################
+#TABLE 3B #DESeq2 analysis - crossover ITT with confounders
+#####################################################################
+#COC_paired #
+glom <- tax_glom.kv(COC_paired)
+physeq <- glom
+#set your variable in the first line of the script to whatever grouping factor you'd like
+#DESeq2
+diff.da = phyloseq_to_deseq2(physeq, ~ PID+VISIT) #adjust for PID
+obs.gm.mean = function(x, na.rm=TRUE) {
+  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+}
+diff.geomeans = apply(counts(diff.da), 1, obs.gm.mean)
+diff.da = estimateSizeFactors(diff.da, geoMeans = diff.geomeans)
+diff.da = DESeq(diff.da, fitType = "local")
+diff.res = results(diff.da, contrast = c("VISIT","Screening","Crossover")) #Specify which factor is reference
+diff.res = diff.res[order(diff.res$padj, na.last = NA), ]
+alpha = 0.5#this is your significance level, adjust if desired
+sigtab = diff.res[(diff.res$padj < alpha), ]
+sigtab = cbind(as(sigtab, "data.frame"), as(tax_table(physeq)[rownames(sigtab), ], "matrix"))
+head(sigtab)
+write.csv(sigtab, "COCarm_paired_a0.5.csv")
+
