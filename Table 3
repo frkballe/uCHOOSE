@@ -8,7 +8,7 @@ library(DESeq2)
 #####################################################################
 #subset samples to include samples from two study arms at the time
 Studyarm_AvB <- subset_samples(UC.f_enrol, VISIT=="Crossover" & Study.arm != "C" & srb_CondomUsed_PV !="NA" & Antibiotic.any !="NA"  & Shannon_screening !="NA")
-glom <- tax_glom.kv(Studyarm_AvB) #
+glom <- tax_glom.kv(Studyarm_AvB) #script sourced from https://gist.github.com/kviljoen/97d36c689c5c9b9c39939c7a100720b9
 physeq <- glom
 #run Deseq2 and include covariates
 diff.da = phyloseq_to_deseq2(physeq, ~ Antibiotic.any+Shannon_screening+srb_CondomUse+Study.arm)
