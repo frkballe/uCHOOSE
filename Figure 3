@@ -1,38 +1,40 @@
 #-----------------------------------------------------------------------------------------------------------------------
 #A-C. INTENTION TO TREAT (ITT) ANALYSIS - CYTOKINE LEVELS WITHIN EACH ARM FROM BASELINE TO CROSSOVER VISIT
 #-----------------------------------------------------------------------------------------------------------------------
-#Arm_A
-CKs = Arm_A[c(1,2,181,183,185:195)]
-CKs$PID <- factor(CKs$PID)
+#Arm_A_paired #phyloseq object  
+CKs = Arm_A_paired[-15,c(2,183,185,187:197)] #include columns with cytokine data
+head(CKs)
 CKs$VISIT <- factor(CKs$VISIT)
-levels(CKs$VISIT) <- c("Crossover"="Crossover","Exit"="Exit","Screening"="Baseline")
+levels(CKs$VISIT) <- c("Crossover"="Crossover","Screening"="Baseline")
 CKs$VISIT <- factor(CKs$VISIT)
 CKs$VISIT <- relevel(CKs$VISIT, ref = "Baseline")
-
-c_long <- gather(CKs,Cytokine,cyt.level,-VISIT,-PID)
-head(c_long)
+paletteHC <- c("Baseline"="dimgrey","Crossover"="seagreen")
+c_long <- gather(CKs,Cytokine,cyt.level,-VISIT)
 c_long_sort <- c_long[order(c_long$VISIT),]
-
-#stats
-friedman.test(cytokine ~ VISIT|PID, data=CKs) 
-
-annotation_df <-  data.frame(Cytokine=c("IL.1b","IL.6","IL.17A","IL.21","IL.23","IL.33","IFN.y"),
-                             start=c("Crossover","Crossover","Crossover","Crossover","Crossover","Crossover","Crossover"),
-                             end=c("Exit","Exit","Exit","Exit","Exit","Exit","Exit"),
-                             y=c(4.5,3.5,3.5,3.5,3.5,3.5,3.5),
-                             label=c("**","*","*","**","*","*","**"))
-#boxplot
-paletteHC <- c("Baseline"="dimgrey","Crossover"="dodgerblue3","Exit"="seagreen")
-pplot <- ggpaired(c_long_sort, x="VISIT", y = "cyt.level",id="PID",
+pplot <- ggpaired(c_long_sort, x="VISIT", y = "cyt.level",
                   color = "VISIT",palette = paletteHC, 
                   line.color = "gray", line.size = 0.4,add = "jitter",
                   facet.by = "Cytokine", short.panel.labs = TRUE) +
   scale_y_log10(limits = c(NA, 100000)) +
   theme(axis.text.x=element_text(angle = 45, hjust = 1,size=8,face="bold")) + 
   theme(text=element_text(size=10)) + ylab("Cytokine concentrations")
-pplot + 
+pplot
+
+#stats
+adj.p.t.test <- compare_means(cyt.level ~ VISIT, c_long_sort, method = "wilcox.test", paired = TRUE,
+                              group.by = "Cytokine", ref.group = NULL,
+                              p.adjust.method = "BH")
+
+annotation_df <-  data.frame(Cytokine=c("IL.1b","IL.6","IL.21","IL.33","IFN.y","TNF.a"),
+                             start=c("Baseline","Baseline","Baseline","Baseline","Baseline","Baseline"),
+                             end=c("Crossover","Crossover","Crossover","Crossover","Crossover","Crossover"),
+                             y=c(4.5,4.5,4.5,4.5,4.5,4.5),
+                             label=c("**","**","**","*","*","**"))
+
+pplot+ 
   geom_signif(data=annotation_df,
               aes(xmin=start, xmax=end, annotations=label, y_position=y),
               textsize = 3,vjust=0.3,tip_length=0.01, manual=TRUE)
+
 
 #REPEAT FOR ARM B AND ARM C
