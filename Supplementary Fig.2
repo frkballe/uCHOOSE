@@ -22,3 +22,27 @@ corr.k(mat1 = CKs, mat2 = t(m.otus),outDir, filename = "merged_taxa_vs_all_cytok
 #------------------------------------------------------------------------------------
 #B. CROSS-SECTIONAL INTENTION TO TREAT (ITT) ANALYSIS OF CYTOKINE CONCENTRATIONS
 #------------------------------------------------------------------------------------
+library(phyloseq)
+library(tidyr)
+library(ggpubr)
+library(ggsignif)
+
+#Crossover #phyloseq object with data from Crossover 
+CKs = Crossover[-15,c(8,183,185,187:197)] #include columns with cytokine data and study arm
+head(CKs)
+paletteHC <- c("A"="coral3","B"="seagreen","C"="dodgerblue2")
+c_long <- gather(CKs,Cytokine,cyt.level,-Study.arm)
+pplot <- ggplot(c_long_sort, x="Study.arm", y = "cyt.level",
+                  color = "Study.arm",palette = paletteHC, 
+                  line.color = "gray", line.size = 0.4,add = "jitter",
+                  facet.by = "Cytokine", short.panel.labs = TRUE) +
+  scale_y_log10(limits = c(NA, 100000)) +
+  theme(axis.text.x=element_text(angle = 45, hjust = 1,size=8,face="bold")) + 
+  theme(text=element_text(size=10)) + ylab("Cytokine concentrations")
+pplot
+
+#stats
+adj.p.t.test <- compare_means(cyt.level ~ Study.arm, c_long, method = "kruskal.test", paired = FALSE,
+                              group.by = "Cytokine", ref.group = NULL,
+                              p.adjust.method = "BH")
+
