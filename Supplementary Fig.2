@@ -29,8 +29,9 @@ library(ggsignif)
 
 #Crossover #phyloseq object with data from Crossover 
 CKs = Crossover[-15,c(8,183,185,187:197)] #include columns with cytokine data and study arm
-head(CKs)
-paletteHC <- c("A"="coral3","B"="seagreen","C"="dodgerblue2")
+head(CKs) <- 
+CKs$Study.arm <- levels(CKs$Study.arm, "A"="Net-EN","B"="CCVR","C"="COC"
+paletteHC <- c("Net-En"="coral3","CCVR"="seagreen","COC"="dodgerblue2")
 c_long <- gather(CKs,Cytokine,cyt.level,-Study.arm)
 pplot <- ggplot(c_long_sort, x="Study.arm", y = "cyt.level",
                   color = "Study.arm",palette = paletteHC, 
@@ -45,4 +46,16 @@ pplot
 adj.p.t.test <- compare_means(cyt.level ~ Study.arm, c_long, method = "kruskal.test", paired = FALSE,
                               group.by = "Cytokine", ref.group = NULL,
                               p.adjust.method = "BH")
+
+
+annotation_df <-  data.frame(Cytokine=c("IL.17A","IL.17A","IL.17F,"IL.1b","IL.1b","IL.21","IL.21","IL.25","IL.25","IL.33","IL.33","IL.6", "TNF.a"),
+                             start=c("COC","Net-En","Net-En","COC","Net-En","COC","Net-En","COC","Net-En","COC","Net-En","COC","COC"),
+                             end=c("CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR"),
+                             y=c(4.5,5.0,4.5,4.5,5.0,4.5,5.0,4.5,5.0,4.5,5.0,4.5,4.5),
+                             label=c("*","**","**","*","*","*","*","*","*","*","*","*","*"))
+
+pplot+ 
+  geom_signif(data=annotation_df,
+              aes(xmin=start, xmax=end, annotations=label, y_position=y),
+              textsize = 3,vjust=0.3,tip_length=0.01, manual=TRUE)
 
