@@ -1,12 +1,21 @@
 #-----------------------------------------------------------
 #sPLSDA PLOT - LONGITUDINAL ANALYSIS 
 #-----------------------------------------------------------
-meta <-  read.csv("before_after_clrbact_logcyt.csv", sep = ";", header =TRUE, row.names=1) #to import the date from excel
+install.packages("~/Desktop/mixOmics_6.3.2.tar.gz")
+install.packages("mixOmics")
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install("mixOmics", version = "3.8")
+#PLSDA
+library(mixOmics)
+
+meta <-  read.csv("before_after_clrbact_logcyt.csv", sep = ";", header =TRUE, row.names=1) #import data from excel 
+#clr transformed bacterial read counts and log transformed cytokine levels for bacteria and cytokines of interest
 colnames(meta)
 sample = meta$PID
 X<-meta[,c(8:ncol(meta))]#assign the x variables #log transformed cytokine levels and clr transformed bacterial read counts
 str(X)
-Y<- meta$HC_group #assign the y variable #split into contraceptive method (COC, Net-En, CCVR) and visit (baseline, crossover)
+Y<- meta$HC_group #assign the y variable #split into contraceptive method (COC, Net-En, CCVR) and visit (baseline, follow-up (crossover))
 plsda.HC_Method <- plsda(X, Y, ncomp = 2, multilevel = sample) #discriminate between the y variable groups according to the x variables
 palette=c("CCVR_baseline"="mediumseagreen","CCVR_crossover"="seagreen4","COC_baseline"="dodgerblue","COC_baseline"="dodgerblue4","Net-En_baseline"="coral1","Net-En_crossover"="coral3")
 plotIndiv(plsda.HC_Method, ind.names = FALSE, main="HC_Method", ellipse = TRUE, centroid = TRUE, cex = 2, point.lwd = 0.7, size.axis=16, size.xlabel=16, size.ylabel=16, legend = TRUE,size.legend=16,size.legend.title =16, col.per.group=palette, title = 'HC baseline & crossover, PLSDA') #plot to PLSDA output
