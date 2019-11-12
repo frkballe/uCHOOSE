@@ -1,8 +1,10 @@
-library(phyloseq)
-
 #------------------------------------------------------------------------------------
 #A. CORRELATION PLOT OF BACTERIA AND CYTOKINES
 #------------------------------------------------------------------------------------
+library(phyloseq)
+#several functions from function is from microbiome_custom_scripts.R 
+#which can be found at: https://gist.github.com/kviljoen/97d36c689c5c9b9c39939c7a100720b9
+
 #physeq_cyt - phyloseq object including all samples with cytokine data
 merged = tax_glom.kv(physeq_cyt)
 #tax.glom.kv function is from microbiome_custom_scripts.R which can be found at: https://gist.github.com/kviljoen/97d36c689c5c9b9c39939c7a100720b9
