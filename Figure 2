@@ -1,3 +1,5 @@
+library(phyloseq)
+
 #-----------------------------------------------------------------------------------------------------------------------
 #A. BARPLOT - ORDERED AND CLUSTERED INTO COMMUNITY STATE TYPES (CSTs)
 #-----------------------------------------------------------------------------------------------------------------------
@@ -19,6 +21,7 @@ barplot_stag_UC_sort <- function(physeq) {
   otus <- otu_table(p1_30)
   #annotation 
   labs <- tax.lab(physeq,otus=otus)
+  #tax.lab function is from microbiome_custom_scripts.R which can be found at 
   #set color palette to accommodate the number of species
   colourCount = length(unique(p3$Species))
   getPalette = colorRampPalette(brewer.pal(8, "Accent")) 
