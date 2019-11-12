@@ -1,18 +1,18 @@
+#-----------------------------------------------------------------------------------------------------------------------
+#A-C. INTENTION TO TREAT (ITT) ANALYSIS - CYTOKINE LEVELS WITHIN EACH ARM FROM BASELINE TO CROSSOVER VISIT
+#-----------------------------------------------------------------------------------------------------------------------
 library(phyloseq)
 library(tidyr)
 library(ggpubr)
 library(ggsignif)
 
-#-----------------------------------------------------------------------------------------------------------------------
-#A-C. INTENTION TO TREAT (ITT) ANALYSIS - CYTOKINE LEVELS WITHIN EACH ARM FROM BASELINE TO CROSSOVER VISIT
-#-----------------------------------------------------------------------------------------------------------------------
-#Arm_A_paired #phyloseq object  
-CKs = Arm_A_paired[-15,c(2,183,185,187:197)] #include columns with cytokine data
+#Arm_A_paired #phyloseq object with data from matched particpants at baseline and crossover
+CKs = Arm_A_paired[-15,c(2,183,185,187:197)] #extract columns with cytokine data
 head(CKs)
 CKs$VISIT <- factor(CKs$VISIT)
 levels(CKs$VISIT) <- c("Crossover"="Crossover","Screening"="Baseline")
 CKs$VISIT <- factor(CKs$VISIT)
-CKs$VISIT <- relevel(CKs$VISIT, ref = "Baseline")
+CKs$VISIT <- relevel(CKs$VISIT, ref = "Baseline") #have baseline before follow up (crossover) visit
 paletteHC <- c("Baseline"="dimgrey","Crossover"="seagreen")
 c_long <- gather(CKs,Cytokine,cyt.level,-VISIT)
 c_long_sort <- c_long[order(c_long$VISIT),]
@@ -25,17 +25,19 @@ pplot <- ggpaired(c_long_sort, x="VISIT", y = "cyt.level",
   theme(text=element_text(size=10)) + ylab("Cytokine concentrations")
 pplot
 
-#stats
+#calculate statistics
 adj.p.t.test <- compare_means(cyt.level ~ VISIT, c_long_sort, method = "wilcox.test", paired = TRUE,
                               group.by = "Cytokine", ref.group = NULL,
                               p.adjust.method = "BH")
 
+#prepare dataframe including significant differences between baseline and follow up (crossover) for each cytokine
 annotation_df <-  data.frame(Cytokine=c("IL.1b","IL.6","IL.21","IL.33","IFN.y","TNF.a"),
                              start=c("Baseline","Baseline","Baseline","Baseline","Baseline","Baseline"),
                              end=c("Crossover","Crossover","Crossover","Crossover","Crossover","Crossover"),
                              y=c(4.5,4.5,4.5,4.5,4.5,4.5),
                              label=c("**","**","**","*","*","**"))
-
+                             
+#add significance codes to plot
 pplot+ 
   geom_signif(data=annotation_df,
               aes(xmin=start, xmax=end, annotations=label, y_position=y),
