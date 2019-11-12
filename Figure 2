@@ -1,10 +1,10 @@
+#-----------------------------------------------------------------------------------------------------------------------
+#A. BARPLOT - ORDERED AND CLUSTERED INTO COMMUNITY STATE TYPES (CSTs)
+#-----------------------------------------------------------------------------------------------------------------------
 library(phyloseq)
 library(ggplot2)
 library(RColorBrewer)
 
-#-----------------------------------------------------------------------------------------------------------------------
-#A. BARPLOT - ORDERED AND CLUSTERED INTO COMMUNITY STATE TYPES (CSTs)
-#-----------------------------------------------------------------------------------------------------------------------
 #UC.f_baseline - phyloseq object containing 16S data from baseline samples from participants enrolled in the uchoose study (n=130)
 
 barplot_stag <- function(physeq) {
