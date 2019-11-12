@@ -1,12 +1,15 @@
 #----------------------------------------------------------------------------------------------
 #CROSS-SECTIONAL, INTENTION TO TREAT ANALYSIS OF STANDARDIZED READ COUNTS OF BACTERIA IF INTEREST 
 #----------------------------------------------------------------------------------------------
+library(phyloseq)
 library(ggpubr)
+
 #UC.f_itt - phyloseq object with data from crossover visit
 UC.f_merged <- tax_glom(UC.f_cross, taxrank = "Genus") #merge OTUs at genus level
 UC.f_df <- psmelt(UC.f_merged) # create dataframe from phyloseq object
 UC.f_df$Genus <- as.character(UC.f_df$Genus) #convert to character
 UC.f_genus <- subset(UC.f_df, Species == c("Gemella","Lactobacillus","Megasphaera","Mycoplasma","Parvimonas","Prevotella","Sneathia","Veillonella"))
+#extract abundance data for bacteria of interest (HIV-risk associated bacteria)
 CKs = sample_data(UC.f_genus)[,c("Study.arm","Genus","Abundance")]
 CKs <-data.frame(CKs)
 head(CKs)
@@ -21,6 +24,7 @@ adj.p.t.test <- compare_means(Abundance ~ Study.arm, CKs, method = "kruskal.test
 #----------------------------------------------------------------------------------------------
 library(ggsignif)
 library(ggplot2)
+
 paletteHC <- c("COC"="dodgerblue3","Net-En"="coral3","CCVR"="seagreen")
 pplot <- ggplot(data=UC.f_genus, aes(factor(Study.arm), y = Abundance, fill=Study.arm)) + 
   geom_boxplot() + geom_point(aes(color=Study.arm))+ theme_bw() + 
