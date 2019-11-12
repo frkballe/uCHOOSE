@@ -1,12 +1,14 @@
+library(phyloseq)
 
 #------------------------------------------------------------------------------------
 #A. CORRELATION PLOT OF BACTERIA AND CYTOKINES
 #------------------------------------------------------------------------------------
-#physeq_cyt - phyloseq object including samples with cytokine data
+#physeq_cyt - phyloseq object including all samples with cytokine data
 merged = tax_glom.kv(physeq_cyt)
+#tax.glom.kv function is from microbiome_custom_scripts.R which can be found at: https://gist.github.com/kviljoen/97d36c689c5c9b9c39939c7a100720b9
 m.otus = otu_table(merged)
 dim(m.otus)#341 335
-CKs = sample_data(merged)[,c(177,179,181:191)] #include cytokine data
+CKs = sample_data(merged)[,c(177,179,181:191)] #extract cytokine data
 #now we first need to remove samples with any NAs
 which(is.na(CKs))
 CKs <- CKs[rowSums(is.na(CKs)) == 0,]
@@ -14,10 +16,11 @@ CKs <- CKs[rowSums(is.na(CKs)) == 0,]
 m.otus = m.otus[,rownames(CKs)]
 #set rownames to lowest available annotation:
 row.names(m.otus) <- tax.lab(m.otus,physeq=merged)
-#tax.lab function is from microbiome_custom_scripts.R #https://gist.github.com/kviljoen/97d36c689c5c9b9c39939c7a100720b9
+#tax.lab function is from microbiome_custom_scripts.R which can be found at: https://gist.github.com/kviljoen/97d36c689c5c9b9c39939c7a100720b9
 head(m.otus)
 outDir = "/Users/christinaballe/Desktop/Christina/uCHOOSE_microbiota"
-corr.k(mat1 = CKs, mat2 = t(m.otus),outDir, filename = "merged_taxa_vs_all_cytokines") #corr.k function is from microbiome_custom_scripts.R
+corr.k(mat1 = CKs, mat2 = t(m.otus),outDir, filename = "merged_taxa_vs_all_cytokines") 
+#corr.k function is from microbiome_custom_scripts.R which can be found at: https://gist.github.com/kviljoen/97d36c689c5c9b9c39939c7a100720b9
 
 #------------------------------------------------------------------------------------
 #B. CROSS-SECTIONAL INTENTION TO TREAT (ITT) ANALYSIS OF CYTOKINE CONCENTRATIONS
@@ -27,36 +30,37 @@ library(tidyr)
 library(ggpubr)
 library(ggsignif)
 
-Crossover <- meta[ which(meta$VISIT=="Crossover"), ]
-CKs = Crossover[,c(27,183,185,187:197)] #include columns with cytokine data and study arm
+Crossover <- meta[ which(meta$VISIT=="Crossover"), ] #get data from crossover only
+CKs = Crossover[,c(27,183,185,187:197)] #only include relevant columns with cytokine data and study arm
 head(CKs) 
-levels(CKs$Study.arm)[levels(CKs$Study.arm)=="A"] <- "Net-En"
-levels(CKs$Study.arm)[levels(CKs$Study.arm)=="B"] <- "CCVR"
-levels(CKs$Study.arm)[levels(CKs$Study.arm)=="C"] <- "COC"
-paletteHC <- c("Net-En"="coral3","CCVR"="seagreen","COC"="dodgerblue2")
+levels(CKs$Study.arm)[levels(CKs$Study.arm)=="A"] <- "Net-En arm" #rename study arm for figure
+levels(CKs$Study.arm)[levels(CKs$Study.arm)=="B"] <- "CCVR arm" #rename study arm for figure
+levels(CKs$Study.arm)[levels(CKs$Study.arm)=="C"] <- "COC arm" #rename study arm for figure
+CKs$Study.arm<- factor(CKs$Study.arm, levels=c("COC arm","Net-En arm","CCVR arm")) #reorder study arms
+paletteHC <- c("Net-En arm"="coral3","CCVR arm"="seagreen","COC arm"="dodgerblue2")
 c_long <- gather(CKs,Cytokine,cyt.level,-Study.arm)
 
-pplot <- ggplot(data=c_long, aes(factor(Study.arm), y = cyt.level, fill=Study.arm)) + geom_boxplot()+ 
+#plot data
+pplot <- ggplot(data=c_long, aes(factor(Study.arm), y = cyt.level)) + geom_boxplot()+ 
   geom_point(aes(color=Study.arm))+ stat_smooth(method="loess")+ theme_bw() + 
   scale_fill_manual(values=c(paletteHC)) + scale_color_manual(values=c(paletteHC))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+theme(axis.text.x=element_text(angle = 45, hjust = 1,size=16,face="bold")) +
-  theme(text=element_text(size=18)) + scale_y_log10(limits = c(NA, 100000)) +ylab("Cytokine levels") + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+theme(axis.text.x=element_text(angle = 45, hjust = 1,size=10,face="bold")) +
+  theme(text=element_text(size=14)) + scale_y_log10(limits = c(NA, 1000000)) +ylab("Cytokine levels") + 
   facet_wrap(~ Cytokine, ncol=4)
-  
- pplot
                           
-#stats
+#calculate stats
 adj.p.t.test <- compare_means(cyt.level ~ Study.arm, c_long, method = "wilcox.test", paired = FALSE,
                                                         group.by = "Cytokine", ref.group = NULL,
                                                         p.adjust.method = "BH")
                           
-                          
+#prepare dataframe including any sigificant differences between study arms by cytokine                         
 annotation_df <-  data.frame(Cytokine=c("IL.17A","IL.17A","IL.17F","IL.1b","IL.1b","IL.21","IL.21","IL.25","IL.25","IL.33","IL.33","IL.6", "TNF.a"),
-                             start=c("COC","Net-En","Net-En","COC","Net-En","COC","Net-En","COC","Net-En","COC","Net-En","COC","COC"),
-                             end=c("CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR","CCVR"),
-                             y=c(4.5,5.0,4.5,4.5,5.0,4.5,5.0,4.5,5.0,4.5,5.0,4.5,4.5),
+                             start=c("COC arm","Net-En arm","Net-En arm","COC arm","Net-En arm","COC arm","Net-En arm","COC arm","Net-En arm","COC arm","Net-En arm","COC arm","COC arm"),
+                             end=c("CCVR arm","CCVR arm","CCVR arm","CCVR arm","CCVR arm","CCVR arm","CCVR arm","CCVR arm","CCVR arm","CCVR arm","CCVR arm","CCVR arm","CCVR arm"),
+                             y=c(4.5,5.5,4.5,4.5,5.5,4.5,5.5,4.5,5.5,4.5,5.5,4.5,4.5),
                              label=c("*","**","**","*","*","*","*","*","*","*","*","*","*"))
 
+#add asterisks to boxplots using above dataframe
 pplot+ 
   geom_signif(data=annotation_df,
               aes(xmin=start, xmax=end, annotations=label, y_position=y),
