@@ -3,10 +3,11 @@ source("https://bioconductor.org/biocLite.R")
 biocLite("DESeq2")
 library(DESeq2)
 
-#####################################################################
+###################################################################################################
 #TABLE 3A - DESeq2 analysis - crossover ITT with confounders
-#####################################################################
-#subset samples to include samples from two study arms at the time
+###################################################################################################
+#UC.f_enrol - phyloseq object including data from enrolled participants (n=130)
+#subset samples to include samples from two study arms at the time - include individual-level confounders (AB and condome use)
 Studyarm_AvB <- subset_samples(UC.f_enrol, VISIT=="Crossover" & Study.arm != "C" & srb_CondomUsed_PV !="NA" & Antibiotic.any !="NA"  & Shannon_screening !="NA")
 glom <- tax_glom.kv(Studyarm_AvB) #script sourced from https://gist.github.com/kviljoen/97d36c689c5c9b9c39939c7a100720b9
 physeq <- glom
@@ -27,12 +28,11 @@ head(sigtab)
 setwd("/Users/christinaballe/Desktop")
 write.csv(sigtab, "NetENvCCVR_wconfounders_a0.05.csv")
 
-
-#####################################################################
-#TABLE 3B #DESeq2 analysis - crossover ITT with confounders
-#####################################################################
+###################################################################################################
+#TABLE 3B #DESeq2 analysis - paired within arm analysis (from baseline (screening) to crossoever)
+###################################################################################################
 #Arm_A - phyloseq object with matched particpants randomized to study arm A - only including screening and crossover visits
-glom <- tax_glom.kv(Arm_A)
+glom <- tax_glom.kv(Arm_A) #script sourced from https://gist.github.com/kviljoen/97d36c689c5c9b9c39939c7a100720b9
 physeq <- glom
 #set your variable in the first line of the script to whatever grouping factor you'd like
 #DESeq2
