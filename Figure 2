@@ -1,41 +1,44 @@
 library(phyloseq)
+library(ggplot2)
+library(RColorBrewer)
 
 #-----------------------------------------------------------------------------------------------------------------------
 #A. BARPLOT - ORDERED AND CLUSTERED INTO COMMUNITY STATE TYPES (CSTs)
 #-----------------------------------------------------------------------------------------------------------------------
+#UC.f_baseline - phyloseq object containing 16S data from baseline samples from participants enrolled in the uchoose study (n=130)
 
-barplot_stag_UC_sort <- function(physeq) {
+barplot_stag <- function(physeq) {
   p1 <- tax_glom(physeq, taxrank = 'Species') #agglumerate at species level
   p1_30 = prune_taxa(names(sort(taxa_sums(p1), TRUE))[1:30], p1) #use top 30 most abundant taxa for plotting
   p2 <- transform_sample_counts(p1_30, function(x) x/sum(x)) #get abundance in %
   p3 <- psmelt(p2)  #create dataframe from phyloseq object
   p3$Species <- as.character(p3$Species) #convert to character
   #sort based on abundance of dominant bacteria in each cluster
-  p4 <- p3[,c("Sample", "Species","fuzzycluster", "Abundance")]
-  p4 <- dcast(p3, Sample + fuzzycluster ~ Species, value.var = "Abundance", fun.aggregate = sum)
-  p4[p4$fuzzycluster =="CST-I",] <- p4[p4$fuzzycluster=="CST-I",][order(p4[p4$fuzzycluster=="CST-I","crispatus_acidophilus"]),]
-  p4[p4$fuzzycluster =="CST-III",] <- p4[p4$fuzzycluster=="CST-III",][order(p4[p4$fuzzycluster=="CST-III","iners"]),]
-  p4[p4$fuzzycluster =="CST-IV",] <- p4[p4$fuzzycluster=="CST-IV",][order(p4[p4$fuzzycluster=="CST-IV","vaginalis"]),]
+  p4 <- p3[,c("Sample", "Species","CSTs", "Abundance")]
+  p4 <- dcast(p3, Sample + CSTs ~ Species, value.var = "Abundance", fun.aggregate = sum)
+  p4[p4$CSTs =="CST-I",] <- p4[p4$CSTs=="CST-I",][order(p4[p4$CSTs=="CST-I","crispatus_acidophilus"]),]
+  p4[p4$CSTs =="CST-III",] <- p4[p4$CSTs=="CST-III",][order(p4[p4$CSTs=="CST-III","iners"]),]
+  p4[p4$CSTs =="CST-IV",] <- p4[p4$CSTs=="CST-IV",][order(p4[p4$CSTs=="CST-IV","vaginalis"]),]
   #reorder p3
   p3$Sample <- factor(p3$Sample, levels=c(p4$Sample))
   otus <- otu_table(p1_30)
   #annotation 
   labs <- tax.lab(physeq,otus=otus)
-  #tax.lab function is from microbiome_custom_scripts.R which can be found at 
+  #tax.lab function is from microbiome_custom_scripts.R which can be found at: https://gist.github.com/kviljoen/97d36c689c5c9b9c39939c7a100720b9 
   #set color palette to accommodate the number of species
   colourCount = length(unique(p3$Species))
   getPalette = colorRampPalette(brewer.pal(8, "Accent")) 
   #annotation 
   #plot
   barplot_species <- ggplot(data=p3, aes(x=Sample, y=Abundance, fill=Species)) 
-  barplot_species <- barplot_species + geom_bar(aes(), stat="identity", position="stack") + facet_grid(~fuzzycluster, scales = "free", space="free") + guides(fill=guide_legend(nrow=5)) + scale_fill_manual(values=getPalette(colourCount)) + ylab("Relative abundance") +xlab("Participants") + ggtitle("Bacterial composition by fuzzy clusters") + theme(legend.position="bottom", strip.background = element_rect(fill=NA, color = "orange"), axis.text.x = element_blank(), axis.ticks.x = element_blank(),panel.background=element_blank(),panel.border=element_blank())
+  barplot_species <- barplot_species + geom_bar(aes(), stat="identity", position="stack") + facet_grid(~fuzzycluster, scales = "free", space="free") + guides(fill=guide_legend(nrow=5)) + scale_fill_manual(values=getPalette(colourCount)) + ylab("Relative abundance") +xlab("Participants") + ggtitle("Bacterial composition by CSTs") + theme(legend.position="bottom", strip.background = element_rect(fill=NA, color = "orange"), axis.text.x = element_blank(), axis.ticks.x = element_blank(),panel.background=element_blank(),panel.border=element_blank())
   return(barplot_species)
 }
-UC_barplot_stag(UC.f_enrol)
+UC_barplot_stag(UC.f_baseline)
 UC_barplot_stag
 
 #shannon diversity plot for barplot
-barplot_stag_UC_sort <- function(physeq,var) {
+barplot_stag_shan <- function(physeq,var) {
   physeq_rich_value <- plot_richness(physeq, x ="var", measures=c("Shannon"))$data$value
   sample_data(physeq)$shannon <- c(physeq_rich_value) 
   p1 <- tax_glom(physeq, taxrank = 'Species') #agglumerate at species level
@@ -44,32 +47,35 @@ barplot_stag_UC_sort <- function(physeq,var) {
   p3 <- psmelt(p2)  #create dataframe from phyloseq object
   p3$Species <- as.character(p3$Species) #convert to character
   #sort based on abundance of dominant bacteria in each cluster
-  p4 <- p3[,c("Sample", "Species","fuzzycluster", "Abundance")]
-  p4 <- dcast(p3, Sample + fuzzycluster ~ Species, value.var = "Abundance", fun.aggregate = sum)
-  p4[p4$fuzzycluster =="CST-I",] <- p4[p4$fuzzycluster=="CST-I",][order(p4[p4$fuzzycluster=="CST-I","crispatus_acidophilus"]),]
-  p4[p4$fuzzycluster =="CST-III",] <- p4[p4$fuzzycluster=="CST-III",][order(p4[p4$fuzzycluster=="CST-III","iners"]),]
-  p4[p4$fuzzycluster =="CST-IV",] <- p4[p4$fuzzycluster=="CST-IV",][order(p4[p4$fuzzycluster=="CST-IV","vaginalis"]),]
+  p4 <- p3[,c("Sample", "Species","CSTs", "Abundance")]
+  p4 <- dcast(p3, Sample + CSTs ~ Species, value.var = "Abundance", fun.aggregate = sum)
+  p4[p4$CSTs =="CST-I",] <- p4[p4$CSTs=="CST-I",][order(p4[p4$CSTs=="CST-I","crispatus_acidophilus"]),]
+  p4[p4$CSTs =="CST-III",] <- p4[p4$CSTs=="CST-III",][order(p4[p4$CSTs=="CST-III","iners"]),]
+  p4[p4$CSTs =="CST-IV",] <- p4[p4$CSTs=="CST-IV",][order(p4[p4$CSTs=="CST-IV","vaginalis"]),]
   #reorder p3
   p3$Sample <- factor(p3$Sample, levels=c(p4$Sample))
   #plot shannon index
-  shannon_plot <- ggplot(p3, aes(x=Sample, y=shannon)) + geom_bar(aes(), stat="identity", width = 0.4) + theme_bw() + facet_grid(~fuzzycluster, scales = "free", space="free") + ylab("Shannon Index") +xlab("Participants") + ggtitle("Shannon diversity by fuzzy clusters") + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position="bottom", strip.background = element_rect(fill=NA, color = "orange"), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+  shannon_plot <- ggplot(p3, aes(x=Sample, y=shannon)) + geom_bar(aes(), stat="identity", width = 0.4) + theme_bw() + facet_grid(~CSTs, scales = "free", space="free") + ylab("Shannon Index") +xlab("Participants") + ggtitle("Shannon diversity by CSTs") + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position="bottom", strip.background = element_rect(fill=NA, color = "orange"), axis.text.x = element_blank(), axis.ticks.x = element_blank())
   return(shannon_plot)
 }
-barplot_stag_UC(UC.f_enrol,var=VISIT)
-
+barplot_shan(UC.f_baseline,var=VISIT)
+barplot_shan
 
 #-----------------------------------------------------------------------------------------------------------------------
 #B-D. INTENTION TO TREAT (ITT) ANALYSIS - ALLUVIAL PLOTS OF CSTs
 #-----------------------------------------------------------------------------------------------------------------------
-#Arm_A - phyloseq object with matched particpants randomized to study arm A - only including screening and crossover visits
+library(phyloseq)
 library(msm)
-df = sample_data(Arm_A)[,c("VISIT","fuzzycluster","PID")]
+library(alluvial)
+
+#Arm_A - phyloseq object with samples from matched particpants randomized to study arm A - only including screening and crossover visits
+df = sample_data(Arm_A)[,c("VISIT","CSTs","PID")]
 df$fuzzycluster = as.character(unlist(df$fuzzycluster))
-df$fuzzycluster[df$fuzzycluster=="CST-I"] = "1" #Change like this because the states apparently are required to be 1, 2, 3 as oppoased to C1, C2, C3 (not sure if they're assumed to be rank ordered, i.e. 1 < 2 <3)
-df$fuzzycluster[df$fuzzycluster=="CST-III"] = "2"
-df$fuzzycluster[df$fuzzycluster=="CST-IV"] = "3"
-df$fuzzycluster = as.factor(df$fuzzycluster)
-statetable.msm(fuzzycluster, PID, data=df)
+df$fuzzycluster[df$CSTs="CST-I"] = "1" #Change like this because the states apparently are required to be 1, 2, 3 as oppoased to C1, C2, C3 (not sure if they're assumed to be rank ordered, i.e. 1 < 2 <3)
+df$fuzzycluster[df$CSTs=="CST-III"] = "2"
+df$fuzzycluster[df$CSTs=="CST-IV"] = "3"
+df$fuzzycluster = as.factor(df$CSTs)
+statetable.msm(CSTs, PID, data=df)
 #    to
 #from 1 2 3
 #   1 3 3 1
@@ -88,6 +94,11 @@ UC_alluvial <- alluvial(UC2d[,1:2], freq=UC2d$Freq, xw=0.1, alpha=1.0,
 #-----------------------------------------------------------------------------------------------------------------------
 #E-G. INTENTION TO TREAT (ITT) ANALYSIS - BOXPLOTS OF SHANNON DIVERSITY - MATCHED ANALYSIS
 #-----------------------------------------------------------------------------------------------------------------------
+library(phyloseq)
+library(ggplot2)
+library(ggpubr)
+
+#Arm_A - phyloseq object with samples from matched particpants randomized to study arm A - only including screening and crossover visits
 CKs = sample_data(Arm_A)[,c("VISIT","Shannon")]
 head(CKs)
 paletteVisit <- c("Baseline"="dimgrey","Crossover"="coral3")
