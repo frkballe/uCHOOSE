@@ -1,0 +1,38 @@
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------
+#Heatmap, wunifrac, lowest tax level, log2 transformed stand counts
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------
+enrol <- subset_samples(UC.f_enrol, VISIT=="Screening")
+
+heatmap_stand_otu_UC <- function(physeq) {
+   #get proportion and melt otu table
+  glom <- tax_glom.kv(physeq)
+  #calculate weighted unifrac for clustering
+  set.seed(2)
+  glom_random_tree = rtree(ntaxa(glom), rooted=TRUE, tip.label=taxa_names(glom))
+  glom_tree = merge_phyloseq(glom,glom_random_tree)
+  diss <- phyloseq::distance(glom_tree,method = "wunifrac", type = "samples")
+  #use top 30 most abundant taxa for plotting
+  glom_30 = prune_taxa(names(sort(taxa_sums(glom), TRUE))[1:30], glom) 
+  otus <- otu_table(glom_30)
+  #log2 transform otus for better heatmap visualisation colour scale
+  zs <- which(otus==0)#find zero entries 
+  if(length(zs)>0){#if there are zero values, transform
+    otus[zs] <- 0.1 #set zs to 0.1
+    otus <- log2(otus)
+  } else{otus <- log2(otus)}
+  plot <- otus #data to be plotted
+  #get metadata for annotation 
+  meta_hm <- data.frame(row.names=sample_names(physeq),sample_data(physeq)$fuzzycluster,sample_data(physeq)$BV)
+  names(meta_hm) <- c("Community cluster", "BV status")
+  #annotation 
+  labs <- tax.lab(physeq,otus=otus)
+  labs[labs=="S.BVAB1"] <- "Lachnovaginosum (BVAB1)" 
+  #color
+  col.pal <- brewer.pal(9,"YlOrRd")
+  annot.color.col <- list("Community cluster"=c("CST-I"="#FDCA89","CST-III"="#E3EA9C","CST-IV"="#666666"),"BV status" =c("Neg" ="maroon1","Int"="deepskyblue","Pos"="yellow"))
+  #heatmap
+  hm <- pheatmap(plot, annotation = meta_hm, color = col.pal, clustering_method = "complete", clustering_distance_cols = diss, show_colnames = FALSE, labels_row = labs, annotation_colors = annot.color.col, fontsize = 11)
+  return(hm)
+} 
+UC_heatmap <- heatmap_stand_otu_UC(enrol) 
+UC_heatmap
